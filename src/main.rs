@@ -34,16 +34,17 @@ fn compare_against_map(map: &HashMap<Vec<u8>, usize>, vec:&Vec<u8>) -> u32 {
     shared_count
 }
 
-fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) -> Vec<Vec<u32>> {
-    let mut mat: Vec<Vec<u32>> = vec![vec![0; ref_vector.len()]; query_vector.len()];
+fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) {
+    let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
     for (qpos, q) in query_vector.iter().enumerate() {
         println!("Working on {}", qpos);
         let query_bigramp_map = as_bigram_map(&q);
         for (rpos, r) in ref_vector.iter().enumerate() {
-            mat[qpos][rpos] = compare_against_map(&query_bigramp_map, &r);
+            cov_vector[rpos] = compare_against_map(&query_bigramp_map, &r);
         }
+        let maxValue = cov_vector.iter().max();
+        println!("Max value: {:?}", maxValue);
     }
-    mat
 }
 
 fn build_len_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) -> Vec<Vec<u32>> {
@@ -79,7 +80,6 @@ fn main() {
     let ref_vector = read_lines_to_uint8_vector(ref_path).expect("Error reading reference");
 
     println!("Building coverage matrix...");
-    let coverage_matrix = build_coverage_matrix(&query_vector, &ref_vector);
-    println!("value: {}", coverage_matrix[1][1]);
+    build_coverage_matrix(&query_vector, &ref_vector);
 
 }
