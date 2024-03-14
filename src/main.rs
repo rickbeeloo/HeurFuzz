@@ -34,7 +34,7 @@ impl PartialOrd for Entry {
 }
 
 fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 10 {
+    if heap.len() < 2 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -99,13 +99,25 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
             println!("Proccessed: {}/{}", j, refs.len());
         }
         
+        // Not ideal, but lets keep track of the speicif counts
+        let mut filter = HashMap::new();
+
         // Fill coverage matrix
-        if r.len() > 3 {
+        if r.len() > 2 {
             for bigram in generate_bigrams(r) {
                 if let Some(entry) = index.get(&bigram) {
-                    // Update Q * R match
                     for (query_id, count) in entry {
-                        cov_vector[*query_id] += 1; // Consider query count to scale
+                        let query_filter = filter.entry(*query_id).or_insert_with(HashMap::new);
+                        // Increment cov_vector and update filter
+                        if let Some(filter_count) = query_filter.get_mut(&bigram) {
+                            if *filter_count < *count {
+                                cov_vector[*query_id] += 1;
+                                *filter_count += 1;
+                            }
+                        } else {
+                            *query_filter.entry(bigram.clone()).or_insert(0) += 1;
+                            cov_vector[*query_id] += 1;
+                        }
                     }
                 }
             }
