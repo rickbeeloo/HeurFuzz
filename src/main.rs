@@ -8,6 +8,7 @@ use clap::{Arg, App};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use fuzzywuzzy::fuzz;
+use std::io::Write;
 
 const MAGNITUDE: i32 = 2_i32.pow(30);
 
@@ -148,21 +149,23 @@ fn bytes_to_utf8_string(bytes: &[u8]) -> String {
     String::from_utf8_lossy(&modified_bytes).into_owned()
 }
 
-fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Vec<u8>], cut_off: u8) {
+fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Vec<u8>], cut_off: u8, output_path: &str) {
+    let mut output_file = File::create(output_path)
+        .expect("Failed to create output file");
+
+    // Write the header
+    writeln!(output_file, "query\treference")
+        .expect("Failed to write header to output file");
+
+    // Write query and best match for each query
     for (bytes, heap) in queries.iter().zip(heaps.iter_mut()) {
         let query_string = bytes_to_utf8_string(bytes);
 
-        println!("Query: {}", query_string);
-        //println!("Heap");
-        // while let Some(item) = heap.pop() {
-        //     let (ref_id, c, l) = reverse_transform(item);
-        //     let ref_bytes = &refs[ref_id as usize];
-        //     let ref_string = String::from_utf8_lossy(ref_bytes);
-        //     println!("{}: c:{} l:{}", ref_string, c, l);
-        // }
-        let (max_match, max_score, max_len) = find_max_match(heap, refs, &query_string, cut_off);
-        println!("Best match: {}", max_match);
-        println!(" ---- END ----")
+        let (max_match, _, _) = find_max_match(heap, refs, &query_string, cut_off);
+
+        // Write query and best match to output file
+        writeln!(output_file, "{}\t{}", query_string, max_match)
+            .expect("Failed to write query and best match to output file");
     }
 }
 
@@ -209,11 +212,16 @@ fn main() {
             .help("Fuzzing score cut-off")
             .required(true)
             .index(3))
+        .arg(Arg::with_name("output")
+            .help("Output path")
+            .required(true)
+            .index(4))
         .get_matches();
 
     
     let query_path = matches.value_of("query").unwrap();
     let ref_path = matches.value_of("reference").unwrap();
+    let output_path = matches.value_of("output").unwrap();
     let cut_off: u8 = matches.value_of("cutoff").unwrap().parse().expect("Cut off not a number");
 
     println!("Reading data...");
@@ -237,7 +245,7 @@ fn main() {
     //     println!("{:?}", heap);
     // }
 
-    fuzz_pass(&mut heaps, &query_vector, &ref_vector, cut_off);
+    fuzz_pass(&mut heaps, &query_vector, &ref_vector, cut_off, &output_path);
     
     println!("Done!");
 }
