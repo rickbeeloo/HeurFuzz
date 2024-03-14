@@ -1,9 +1,9 @@
-use std::fs::File;
-use std::io::{BufReader, BufRead};
 use std::collections::HashMap;
+use ndarray::{Array2, Array, Ix2};
+use std::io::BufReader;
+use std::fs::File;
+use std::io::BufRead;
 use clap::{Arg, App};
-use rayon::prelude::*;
-use rayon::ThreadPoolBuilder;
 
 fn read_lines_to_uint8_vector(file_path: &str) -> Result<Vec<Vec<u8>>, std::io::Error> {
     let file = File::open(file_path)?;
@@ -18,66 +18,39 @@ fn read_lines_to_uint8_vector(file_path: &str) -> Result<Vec<Vec<u8>>, std::io::
     Ok(output)
 }
 
-fn as_bigram_map(vec: &Vec<u8>) -> HashMap<Vec<u8>, usize> {
-    let mut bigram_counts: HashMap<Vec<u8>, usize> = HashMap::new();
-    for bigram in vec.windows(2) {
-        *bigram_counts.entry(bigram.to_vec()).or_insert(0) += 1;
+fn generate_bigrams(lst: &[u8]) -> Vec<(u8, u8)> {
+    let mut result = Vec::new();
+    for i in 0..lst.len() - 1 {
+        result.push((lst[i], lst[i + 1]));
     }
-    bigram_counts
+    result
 }
 
-fn compare_against_map(map: &HashMap<Vec<u8>, usize>, vec:&Vec<u8>) -> u32 {
-    let mut shared_count : u32 = 0;
-    for bigram in vec.windows(2) {
-        if let Some(&count) = map.get(&bigram.to_vec()) {
-            shared_count += count as u32;
+fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> {
+    let mut index = HashMap::new();
+    for (i, query) in queries.iter().enumerate() {
+        for bigram in generate_bigrams(query) {
+            let seq_entry = index.entry(bigram).or_insert_with(HashMap::new);
+            *seq_entry.entry(i).or_insert(0) += 1;
         }
     }
-    shared_count
+    index
 }
 
-// fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) {
-//     let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
-//     for (qpos, q) in query_vector.iter().enumerate() {
-//         println!("Working on {}", qpos);
-//         let query_bigramp_map = as_bigram_map(&q);
-//         for (rpos, r) in ref_vector.iter().enumerate() {
-//             cov_vector[rpos] = compare_against_map(&query_bigramp_map, &r);
-//         }
-//         let maxValue = cov_vector.iter().max();
-//         println!("Max value: {:?}", maxValue);
-//     }
-// }
-
-fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) {
-
-    ThreadPoolBuilder::new()
-        .num_threads(70)
-        .build_global()
-        .unwrap();
-
-    query_vector.par_iter().enumerate().for_each(|(qpos, q)| {
-        println!("Working on {}", qpos);
-        let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
-        let query_bigramp_map = as_bigram_map(&q);
-        for (rpos, r) in ref_vector.iter().enumerate() {
-            cov_vector[rpos] = compare_against_map(&query_bigramp_map, &r);
+fn query_index(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], mat: &mut Array2<u32>) {
+    refs.iter().enumerate().for_each(|(j, ref_)| {
+        if j % 100 == 0 {
+            println!("Proccessed: {}/{}", j, refs.len());
         }
-        let max_value = cov_vector.iter().max();
-        println!("Max value: {:?}", max_value);
+        for bigram in generate_bigrams(ref_) {
+            if let Some(entry) = index.get(&bigram) {
+                for (seq_id, count) in entry {
+                    mat[[j, *seq_id]] += count;
+                }
+            }
+        }
     });
 }
-
-fn build_len_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) -> Vec<Vec<u32>> {
-    let mut mat: Vec<Vec<u32>> = vec![vec![0; ref_vector.len()]; query_vector.len()];
-    for (qpos, q) in query_vector.iter().enumerate() {
-        for (rpos, r) in ref_vector.iter().enumerate() {
-            mat[qpos][rpos] = (q.len() as i32 - r.len() as i32).abs() as u32;
-        }
-    }
-    mat
-}
-
 
 
 fn main() {
@@ -100,7 +73,25 @@ fn main() {
     let query_vector = read_lines_to_uint8_vector(query_path).expect("Error reading query");
     let ref_vector = read_lines_to_uint8_vector(ref_path).expect("Error reading reference");
 
-    println!("Building coverage matrix...");
-    build_coverage_matrix(&query_vector, &ref_vector);
+    println!("Index queries in hashmap...");
+    let index = index_queries(&query_vector);
+
+    println!("Querying...");
+    let mut m = Array2::<u32>::zeros((ref_vector.len(), query_vector.len()));
+    query_index(&index, &ref_vector, &mut m);
+    
+    println!("Done!");
+    println!("{:?}", m);
 
 }
+
+// fn main() {
+//     let queries = vec![vec![1, 1, 2], vec![1, 2, 3]];
+//     let refs = vec![vec![1, 1, 2, 3], vec![1, 1, 3], vec![1, 2, 3]];
+//     let m = Array2::<u32>::zeros((refs.len(), queries.len()));
+    
+//     let index = index_queries(&queries);
+//     let mat = query_index(&index, &refs, m);
+
+//     println!("{:?}", mat);
+// }
