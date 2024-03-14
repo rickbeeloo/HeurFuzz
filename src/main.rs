@@ -34,7 +34,7 @@ impl PartialOrd for Entry {
 }
 
 fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 2 {
+    if heap.len() < 10 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -130,10 +130,15 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
         let query_string = String::from_utf8_lossy(bytes);
 
         println!("Query: {}", query_string);
-        
-        let (max_match, max_score, max_len) = find_max_match(heap, refs, &query_string, cut_off);
-
-        println!("Best match: {}", max_match);
+        println!("Heap");
+        while let Some(item) = heap.pop() {
+            let ref_id = item.ref_index as usize;
+            let ref_bytes = &refs[ref_id];
+            let ref_string = String::from_utf8_lossy(ref_bytes);
+            println!("{}: {:?}", ref_string, item);
+        }
+        // let (max_match, max_score, max_len) = find_max_match(heap, refs, &query_string, cut_off);
+        // println!("Best match: {}", max_match);
         println!(" ---- END ----")
     }
 }
