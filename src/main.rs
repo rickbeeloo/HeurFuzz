@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::{BufReader, BufRead};
 use std::collections::HashMap;
 use clap::{Arg, App};
+use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 
 fn read_lines_to_uint8_vector(file_path: &str) -> Result<Vec<Vec<u8>>, std::io::Error> {
     let file = File::open(file_path)?;
@@ -34,17 +36,36 @@ fn compare_against_map(map: &HashMap<Vec<u8>, usize>, vec:&Vec<u8>) -> u32 {
     shared_count
 }
 
+// fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) {
+//     let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
+//     for (qpos, q) in query_vector.iter().enumerate() {
+//         println!("Working on {}", qpos);
+//         let query_bigramp_map = as_bigram_map(&q);
+//         for (rpos, r) in ref_vector.iter().enumerate() {
+//             cov_vector[rpos] = compare_against_map(&query_bigramp_map, &r);
+//         }
+//         let maxValue = cov_vector.iter().max();
+//         println!("Max value: {:?}", maxValue);
+//     }
+// }
+
 fn build_coverage_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) {
-    let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
-    for (qpos, q) in query_vector.iter().enumerate() {
+
+    ThreadPoolBuilder::new()
+        .num_threads(70)
+        .build_global()
+        .unwrap();
+
+    query_vector.par_iter().enumerate().for_each(|(qpos, q)| {
         println!("Working on {}", qpos);
+        let mut cov_vector: Vec<u32> = vec![0; ref_vector.len()];
         let query_bigramp_map = as_bigram_map(&q);
         for (rpos, r) in ref_vector.iter().enumerate() {
             cov_vector[rpos] = compare_against_map(&query_bigramp_map, &r);
         }
-        let maxValue = cov_vector.iter().max();
-        println!("Max value: {:?}", maxValue);
-    }
+        let max_value = cov_vector.iter().max();
+        println!("Max value: {:?}", max_value);
+    });
 }
 
 fn build_len_matrix(query_vector: &Vec<Vec<u8>>, ref_vector: &Vec<Vec<u8>>) -> Vec<Vec<u32>> {
