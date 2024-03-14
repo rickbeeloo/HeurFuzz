@@ -140,16 +140,16 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
     for (bytes, heap) in queries.iter().zip(heaps.iter_mut()) {
         let query_string = String::from_utf8_lossy(bytes);
 
-        println!("Query: {}", query_string);
-        println!("Heap");
-        while let Some(item) = heap.pop() {
-            let (ref_id, c, l) = reverse_transform(item);
-            let ref_bytes = &refs[ref_id as usize];
-            let ref_string = String::from_utf8_lossy(ref_bytes);
-            println!("{}: c:{} l:{}", ref_string, c, l);
-        }
-        // let (max_match, max_score, max_len) = find_max_match(heap, refs, &query_string, cut_off);
-        // println!("Best match: {}", max_match);
+        // println!("Query: {}", query_string);
+        // println!("Heap");
+        // while let Some(item) = heap.pop() {
+        //     let (ref_id, c, l) = reverse_transform(item);
+        //     let ref_bytes = &refs[ref_id as usize];
+        //     let ref_string = String::from_utf8_lossy(ref_bytes);
+        //     println!("{}: c:{} l:{}", ref_string, c, l);
+        // }
+        let (max_match, max_score, max_len) = find_max_match(heap, refs, &query_string, cut_off);
+        println!("Best match: {}", max_match);
         println!(" ---- END ----")
     }
 }
