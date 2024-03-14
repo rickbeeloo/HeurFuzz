@@ -104,7 +104,9 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
                 if let Some(entry) = index.get(&bigram) {
                     // Update Q * R match
                     for (query_id, count) in entry {
-                        cov_vector[*query_id] += 1; // Consider query count to scale
+                        if cov_vector[*query_id] < *count {
+                            cov_vector[*query_id] += 1; // Consider query count to scale
+                        }
                     }
                 }
             }
