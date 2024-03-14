@@ -88,6 +88,14 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
 }
 
 
+fn create_frequency_map(bigrams: &Vec<(u8, u8)>) -> HashMap<(u8, u8), usize> {
+    let mut frequency_map = HashMap::new();
+    for &bigram in bigrams {
+        *frequency_map.entry(bigram).or_insert(0) += 1;
+    }
+    frequency_map
+}
+
 fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>> ) {
     refs.iter().enumerate().for_each(|(j, r)| {
         
@@ -95,35 +103,27 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
         cov_vector.iter_mut().for_each(|m| *m = 0);
 
         // Show the progress
-        if j % 100_000 == 0 {
+        if j % 10_000 == 0 {
+            let percent = j / refs.len(); 
             println!("Proccessed: {}/{}", j, refs.len());
         }
         
-        // Not ideal, but lets keep track of the speicif counts
-        let mut filter = HashMap::new();
-
         // Fill coverage matrix
         if r.len() > 2 {
-            for bigram in generate_bigrams(r) {
+            let r_bigram_map: HashMap<(u8, u8), usize> = create_frequency_map(&generate_bigrams(r));
+            for (bigram, ref_count) in r_bigram_map.iter() {
+               // println!("Bigrram: {:?} with count {}", bigram, ref_count);
                 if let Some(entry) = index.get(&bigram) {
-                    for (query_id, count) in entry {
-                        let query_filter = filter.entry(*query_id).or_insert_with(HashMap::new);
-                        // Increment cov_vector and update filter
-                        if let Some(filter_count) = query_filter.get_mut(&bigram) {
-                            if *filter_count < *count {
-                                cov_vector[*query_id] += 1;
-                                *filter_count += 1;
-                            }
-                        } else {
-                            *query_filter.entry(bigram.clone()).or_insert(0) += 1;
-                            cov_vector[*query_id] += 1;
-                        }
+                    for (query_id, query_count) in entry {
+                        cov_vector[*query_id] = std::cmp::min(*query_count, *ref_count as u32); 
                     }
                 }
             }
         } else {
             println!("Discarded: {:?}", r);
         }
+
+       // println!("Coverage vector: {:?}", cov_vector);
         
         // For each query we now have the coverage with the current ref
         // we can push these to the heaps
