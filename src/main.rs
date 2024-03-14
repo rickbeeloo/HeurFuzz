@@ -89,7 +89,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
 
 
 fn create_frequency_map(bigrams: &Vec<(u8, u8)>) -> HashMap<(u8, u8), usize> {
-    let mut frequency_map = HashMap::new();
+    let mut frequency_map = HashMap::with_capacity(bigrams.len());
     for &bigram in bigrams {
         *frequency_map.entry(bigram).or_insert(0) += 1;
     }
@@ -108,11 +108,10 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
             println!("Proccessed: {}/{}", j, refs.len());
         }
         
-        // Fill coverage matrix
-        if r.len() > 2 {
+        // Create bigram reference frequency map and compare it with each query map
+        if r.len() > 100 {
             let r_bigram_map: HashMap<(u8, u8), usize> = create_frequency_map(&generate_bigrams(r));
             for (bigram, ref_count) in r_bigram_map.iter() {
-               // println!("Bigrram: {:?} with count {}", bigram, ref_count);
                 if let Some(entry) = index.get(&bigram) {
                     for (query_id, query_count) in entry {
                         cov_vector[*query_id] = std::cmp::min(*query_count, *ref_count as u32); 
@@ -122,9 +121,7 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
         } else {
             println!("Discarded: {:?}", r);
         }
-
-       // println!("Coverage vector: {:?}", cov_vector);
-        
+       
         // For each query we now have the coverage with the current ref
         // we can push these to the heaps
         cov_vector.iter().enumerate().for_each(|(query_index, coverage)|{
@@ -140,7 +137,7 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
     for (bytes, heap) in queries.iter().zip(heaps.iter_mut()) {
         let query_string = String::from_utf8_lossy(bytes);
 
-        // println!("Query: {}", query_string);
+        println!("Query: {}", query_string);
         // println!("Heap");
         // while let Some(item) = heap.pop() {
         //     let (ref_id, c, l) = reverse_transform(item);
