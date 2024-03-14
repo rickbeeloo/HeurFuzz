@@ -93,6 +93,7 @@ fn create_frequency_map(bigrams: &Vec<(u8, u8)>) -> HashMap<(u8, u8), usize> {
     for &bigram in bigrams {
         *frequency_map.entry(bigram).or_insert(0) += 1;
     }
+    println!("Freq map: {:?}", frequency_map);
     frequency_map
 }
 
@@ -109,12 +110,12 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
         }
         
         // Create bigram reference frequency map and compare it with each query map
-        if r.len() > 100 {
+        if r.len() > 1 {
             let r_bigram_map: HashMap<(u8, u8), usize> = create_frequency_map(&generate_bigrams(r));
             for (bigram, ref_count) in r_bigram_map.iter() {
                 if let Some(entry) = index.get(&bigram) {
                     for (query_id, query_count) in entry {
-                        cov_vector[*query_id] = std::cmp::min(*query_count, *ref_count as u32); 
+                        cov_vector[*query_id] += std::cmp::min(*query_count, *ref_count as u32); 
                     }
                 }
             }
@@ -138,7 +139,7 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
         let query_string = String::from_utf8_lossy(bytes);
 
         println!("Query: {}", query_string);
-        // println!("Heap");
+        println!("Heap");
         // while let Some(item) = heap.pop() {
         //     let (ref_id, c, l) = reverse_transform(item);
         //     let ref_bytes = &refs[ref_id as usize];
@@ -154,7 +155,7 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
 fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: &str, cut_off: u8) -> (String, u8, usize) {
     let mut max_score = 0;
     let mut max_match = String::new();
-    let mut max_len = 0;
+    let mut last_size_difference: usize = 1_000_000;
 
     while let Some(item) = heap.pop() {
         let (ref_index, coverage, l) = reverse_transform(item);
@@ -162,16 +163,18 @@ fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: 
         let ref_string = String::from_utf8_lossy(ref_bytes);
 
         let fuzz_r = fuzz::partial_ratio(&ref_string, query_string);
-        //println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
+        println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
+        
+        let size_difference = (ref_bytes.len() as i32 - query_string.len() as i32).abs() as usize;
 
-        if fuzz_r >= cut_off && (fuzz_r > max_score || (max_score == fuzz_r && ref_bytes.len() > max_len)) {
+        if fuzz_r >= cut_off && (fuzz_r > max_score || (max_score == fuzz_r && size_difference < last_size_difference)) {
             max_match = ref_string.into_owned(); 
             max_score = fuzz_r;
-            max_len = ref_bytes.len();
+            last_size_difference = size_difference;
         }
     }
 
-    (max_match, max_score, max_len)
+    (max_match, max_score, last_size_difference)
 }
 
 
