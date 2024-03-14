@@ -157,8 +157,8 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
     writeln!(output_file, "query\treference")
         .expect("Failed to write header to output file");
 
-    // Write query and best match for each query
-    for (bytes, heap) in queries.iter().zip(heaps.iter_mut()) {
+
+    for (index, (bytes, heap)) in queries.iter().zip(heaps.iter_mut()).enumerate() {
         let query_string = bytes_to_utf8_string(bytes);
 
         let (max_match, _, _) = find_max_match(heap, refs, &query_string, cut_off);
@@ -166,6 +166,12 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
         // Write query and best match to output file
         writeln!(output_file, "{}\t{}", query_string, max_match)
             .expect("Failed to write query and best match to output file");
+
+        // Print progress
+        if index % 100 == 0 {
+            println!("Processed query {} of {}", index + 1, queries.len());
+        }
+        
     }
 }
 
