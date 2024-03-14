@@ -83,7 +83,6 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
             *seq_entry.entry(i).or_insert(0) += 1;
         }
     }
-    //println!("Index: {:?}", index);
     index
 }
 
@@ -93,7 +92,6 @@ fn create_frequency_map(bigrams: &Vec<(u8, u8)>) -> HashMap<(u8, u8), usize> {
     for &bigram in bigrams {
         *frequency_map.entry(bigram).or_insert(0) += 1;
     }
-    println!("Freq map: {:?}", frequency_map);
     frequency_map
 }
 
@@ -139,7 +137,7 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
         let query_string = String::from_utf8_lossy(bytes);
 
         println!("Query: {}", query_string);
-        println!("Heap");
+        //println!("Heap");
         // while let Some(item) = heap.pop() {
         //     let (ref_id, c, l) = reverse_transform(item);
         //     let ref_bytes = &refs[ref_id as usize];
@@ -163,7 +161,7 @@ fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: 
         let ref_string = String::from_utf8_lossy(ref_bytes);
 
         let fuzz_r = fuzz::partial_ratio(&ref_string, query_string);
-        println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
+        //println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
         
         let size_difference = (ref_bytes.len() as i32 - query_string.len() as i32).abs() as usize;
 
