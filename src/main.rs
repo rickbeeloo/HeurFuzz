@@ -34,7 +34,7 @@ impl PartialOrd for Entry {
 }
 
 fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 10 {
+    if heap.len() < 2 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -104,15 +104,13 @@ fn heuristic_filter(index: &HashMap<(u8, u8, u8), HashMap<usize, u32>>, refs: &[
                 if let Some(entry) = index.get(&bigram) {
                     // Update Q * R match
                     for (query_id, count) in entry {
-                        cov_vector[*query_id] += count - 1; // Consider query count to scale
+                        cov_vector[*query_id] += 1; // Consider query count to scale
                     }
                 }
             }
         } else {
             println!("Discarded: {:?}", r);
         }
-
-        
         
         // For each query we now have the coverage with the current ref
         // we can push these to the heaps
