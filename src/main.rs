@@ -34,7 +34,7 @@ impl PartialOrd for Entry {
 }
 
 fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 2 {
+    if heap.len() < 10 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -83,6 +83,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
             *seq_entry.entry(i).or_insert(0) += 1;
         }
     }
+    println!("Index: {:?}", index);
     index
 }
 
@@ -104,9 +105,7 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
                 if let Some(entry) = index.get(&bigram) {
                     // Update Q * R match
                     for (query_id, count) in entry {
-                        if cov_vector[*query_id] < *count {
-                            cov_vector[*query_id] += 1; // Consider query count to scale
-                        }
+                        cov_vector[*query_id] += 1; // Consider query count to scale
                     }
                 }
             }
