@@ -83,7 +83,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
             *seq_entry.entry(i).or_insert(0) += 1;
         }
     }
-    println!("Index: {:?}", index);
+    //println!("Index: {:?}", index);
     index
 }
 
