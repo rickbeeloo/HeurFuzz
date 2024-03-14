@@ -33,8 +33,8 @@ impl PartialOrd for Entry {
     }
 }
 
-fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry, topN: usize) {
-    if heap.len() < topN {
+fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
+    if heap.len() < 2 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -67,15 +67,15 @@ fn read_lines_to_uint8_vector(file_path: &str) -> Result<Vec<Vec<u8>>, std::io::
     Ok(output)
 }
 
-fn generate_bigrams(lst: &[u8]) -> Vec<(u8, u8)> {
+fn generate_bigrams(lst: &[u8]) -> Vec<(u8, u8, u8)> {
     let mut result = Vec::new();
-    for i in 0..lst.len() - 1 {
-        result.push((lst[i], lst[i + 1]));
+    for i in 0..lst.len() - 2 {
+        result.push((lst[i], lst[i + 1], lst[i + 2]));
     }
     result
 }
 
-fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> {
+fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8, u8), HashMap<usize, u32>> {
     let mut index = HashMap::new();
     for (i, query) in queries.iter().enumerate() {
         for bigram in generate_bigrams(query) {
@@ -87,7 +87,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
 }
 
 
-fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>>, topN: usize ) {
+fn heuristic_filter(index: &HashMap<(u8, u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>> ) {
     refs.iter().enumerate().for_each(|(j, r)| {
         
         // Reset coverage vec
@@ -113,7 +113,7 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
         cov_vector.iter().enumerate().for_each(|(query_index, coverage)|{
             let q_len = query_lens[query_index] as i32;
             let length_difference = (r.len() as i32 - q_len).abs();
-            update_heap(&mut heaps[query_index], transform(j as u32, *coverage, length_difference), topN);
+            update_heap(&mut heaps[query_index], transform(j as u32, *coverage, length_difference));
         }) 
     });
 }
@@ -143,7 +143,7 @@ fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: 
         let ref_string = String::from_utf8_lossy(ref_bytes);
 
         let fuzz_r = fuzz::partial_ratio(&ref_string, query_string);
-        // println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
+        //println!("{} : {}: {} ", query_string, ref_string, fuzz_r);
 
         if fuzz_r >= cut_off && (fuzz_r > max_score || (max_score == fuzz_r && ref_bytes.len() > max_len)) {
             max_match = ref_string.into_owned(); 
@@ -173,17 +173,12 @@ fn main() {
             .help("Fuzzing score cut-off")
             .required(true)
             .index(3))
-        .arg(Arg::with_name("topn")
-            .help("Top N matches to keep from heuristic")
-            .required(true)
-            .index(4))
         .get_matches();
 
     
     let query_path = matches.value_of("query").unwrap();
     let ref_path = matches.value_of("reference").unwrap();
     let cut_off: u8 = matches.value_of("cutoff").unwrap().parse().expect("Cut off not a number");
-    let topN: usize = matches.value_of("topn").unwrap().parse().expect("Cut off not a number");
 
     println!("Reading data...");
     let query_vector = read_lines_to_uint8_vector(query_path).expect("Error reading query");
@@ -200,7 +195,7 @@ fn main() {
         heaps.push(BinaryHeap::new());
     }
 
-    heuristic_filter(&index, &ref_vector, &len_vector, &mut cov_vector, &mut heaps, topN);
+    heuristic_filter(&index, &ref_vector, &len_vector, &mut cov_vector, &mut heaps);
 
     // for heap in heaps {
     //     println!("{:?}", heap);
