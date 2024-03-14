@@ -33,8 +33,8 @@ impl PartialOrd for Entry {
     }
 }
 
-fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 2 {
+fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry, topN: usize) {
+    if heap.len() < topN {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -87,7 +87,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> 
 }
 
 
-fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>> ) {
+fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>>, topN: usize ) {
     refs.iter().enumerate().for_each(|(j, r)| {
         
         // Reset coverage vec
@@ -113,7 +113,7 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
         cov_vector.iter().enumerate().for_each(|(query_index, coverage)|{
             let q_len = query_lens[query_index] as i32;
             let length_difference = (r.len() as i32 - q_len).abs();
-            update_heap(&mut heaps[query_index], transform(j as u32, *coverage, length_difference));
+            update_heap(&mut heaps[query_index], transform(j as u32, *coverage, length_difference), topN);
         }) 
     });
 }
@@ -173,12 +173,17 @@ fn main() {
             .help("Fuzzing score cut-off")
             .required(true)
             .index(3))
+        .arg(Arg::with_name("topn")
+            .help("Top N matches to keep from heuristic")
+            .required(true)
+            .index(4))
         .get_matches();
 
     
     let query_path = matches.value_of("query").unwrap();
     let ref_path = matches.value_of("reference").unwrap();
     let cut_off: u8 = matches.value_of("cutoff").unwrap().parse().expect("Cut off not a number");
+    let topN: usize = matches.value_of("topn").unwrap().parse().expect("Cut off not a number");
 
     println!("Reading data...");
     let query_vector = read_lines_to_uint8_vector(query_path).expect("Error reading query");
@@ -195,7 +200,7 @@ fn main() {
         heaps.push(BinaryHeap::new());
     }
 
-    heuristic_filter(&index, &ref_vector, &len_vector, &mut cov_vector, &mut heaps);
+    heuristic_filter(&index, &ref_vector, &len_vector, &mut cov_vector, &mut heaps, topN);
 
     // for heap in heaps {
     //     println!("{:?}", heap);
