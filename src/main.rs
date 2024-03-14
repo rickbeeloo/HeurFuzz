@@ -67,15 +67,15 @@ fn read_lines_to_uint8_vector(file_path: &str) -> Result<Vec<Vec<u8>>, std::io::
     Ok(output)
 }
 
-fn generate_bigrams(lst: &[u8]) -> Vec<(u8, u8, u8)> {
+fn generate_bigrams(lst: &[u8]) -> Vec<(u8, u8)> {
     let mut result = Vec::new();
-    for i in 0..lst.len() - 2 {
-        result.push((lst[i], lst[i + 1], lst[i + 2]));
+    for i in 0..lst.len() - 1 {
+        result.push((lst[i], lst[i + 1]));
     }
     result
 }
 
-fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8, u8), HashMap<usize, u32>> {
+fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8), HashMap<usize, u32>> {
     let mut index = HashMap::new();
     for (i, query) in queries.iter().enumerate() {
         for bigram in generate_bigrams(query) {
@@ -87,7 +87,7 @@ fn index_queries(queries: &[Vec<u8>]) -> HashMap<(u8, u8, u8), HashMap<usize, u3
 }
 
 
-fn heuristic_filter(index: &HashMap<(u8, u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>> ) {
+fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<u8>], query_lens: &Vec<u32>, cov_vector: &mut Vec<u32>, heaps: &mut Vec<BinaryHeap<Entry>> ) {
     refs.iter().enumerate().for_each(|(j, r)| {
         
         // Reset coverage vec
