@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 clap = "3.0"
 ndarray = "0.15"
+fuzzywuzzy = "*"
