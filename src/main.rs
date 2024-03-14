@@ -34,7 +34,7 @@ impl PartialOrd for Entry {
 }
 
 fn update_heap(heap: &mut BinaryHeap<Entry>, entry: Entry) {
-    if heap.len() < 2 {
+    if heap.len() < 100 {
         heap.push(entry);
     } else if let Some(smallest) = heap.peek() {
         if entry < *smallest {
@@ -132,9 +132,25 @@ fn heuristic_filter(index: &HashMap<(u8, u8), HashMap<usize, u32>>, refs: &[Vec<
 }
 
 
+fn replace_non_utf8_with_space(bytes: &mut Vec<u8>) {
+    for byte in bytes.iter_mut() {
+        if !byte.is_ascii() {
+            // Replace non-UTF-8 byte with space
+            *byte = 32u8; // Space character
+        }
+    }
+}
+
+
+fn bytes_to_utf8_string(bytes: &[u8]) -> String {
+    let mut modified_bytes = bytes.to_vec();
+    replace_non_utf8_with_space(&mut modified_bytes);
+    String::from_utf8_lossy(&modified_bytes).into_owned()
+}
+
 fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Vec<u8>], cut_off: u8) {
     for (bytes, heap) in queries.iter().zip(heaps.iter_mut()) {
-        let query_string = String::from_utf8_lossy(bytes);
+        let query_string = bytes_to_utf8_string(bytes);
 
         println!("Query: {}", query_string);
         //println!("Heap");
