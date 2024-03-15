@@ -158,6 +158,8 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
     writeln!(output_file, "query\treference")
         .expect("Failed to write header to output file");
 
+    // Keep track of how many items could not be mapped
+    let mut not_mapped = 0;
 
     for (index, (bytes, heap)) in queries.iter().zip(heaps.iter_mut()).enumerate() {
         let query_string = bytes_to_utf8_string(bytes);
@@ -173,6 +175,10 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
 
         let max_match = find_max_match(heap, refs, &query_string, cut_off, score_scale);
 
+        if max_match.is_empty() {
+            not_mapped +=1;
+        }
+
         // Write query and best match to output file
         writeln!(output_file, "{}\t{}", query_string, max_match)
             .expect("Failed to write query and best match to output file");
@@ -183,6 +189,8 @@ fn fuzz_pass(heaps: &mut Vec<BinaryHeap<Entry>>, queries: &[Vec<u8>], refs: &[Ve
         }
         
     }
+
+    println!("Done fuzzing: {} / {} mapped!", queries.len() - not_mapped, queries.len() );
 }
 
 fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: &str, cut_off: u8, score_scale: f32) -> String {
@@ -209,12 +217,6 @@ fn find_max_match(heap: &mut BinaryHeap<Entry>, refs: &[Vec<u8>], query_string: 
             max_score = combined_score;
             last_size_difference = size_difference;
         }
-
-        // if fuzz_r >= cut_off && (fuzz_r > max_score || (max_score == fuzz_r && size_difference < last_size_difference)) {
-        //     max_match = ref_string.into_owned(); 
-        //     max_score = fuzz_r;
-        //     last_size_difference = size_difference;
-        // }
     }
 
     max_match
