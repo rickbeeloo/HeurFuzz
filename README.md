@@ -6,7 +6,7 @@ Lets say you have a query set of terms, `q` and a reference database `r`. You wa
 
   
 
-<h2> The heuristic approach </h2>
+### The heuristic approach
 We could fuzzy search every term in `q` in `r` but having partial or bad matches does not mean a bad mapping, it might simply be a bad formatted query. For example lets say we have a query like "A yellow banana from the store" and want to match it to a taxonomy database having "banana". A fuzzy search will say "A yellow banana from the store" is only a `~6/20` match with "banana". We can solve this using a partial ratio match, this would say "A yellow _banana_ from the store" is is `100/100` match with "banana". However, **partial ratio mapping will be infeasibly slow for big datasets**.
 
 Since partial mapping is too slow we have to come up with a heuristic approach to make an initial selection before running a fuzzy search. We first calculate all the shared bigrams between all `q x r`, lets say `Cov` Just shared bigrams are not accurate enough as very long texts might have all bigrams. For example, if we have the query "yellow banana" and we can match "yellow banana" and "yellow and browns bananas from a store". Both would match all bigrams from the query yet "yellow banana" seems closer to our query. To factor this in we also calculate the length difference for all `q x r`, lets say `Ldiff`. Each query is linked to a heap that stores the top matches, first based on `Cov` and if coverage is the same based on `Ldiff` being the smallest. This is already pretty accurate, take for example the topN selection for `white-breasted nuthatch`:
@@ -57,7 +57,7 @@ We can now run a fuzzy search for each heap item against the corresponding query
 
 The score (`s`) is the partial fuzz ratio, the length is the length difference with the query ( `l` ), and the score is calculated by `score = (FuzzScore * Scale) - l`. The `Scale` is a user parameter that determines how heavy the fuzz score weighs compared to the length. By default that is `2x`, so scores is twice as heavy as the length. In this case the best match is `red-breasted nuthatch`. While not the same it indeed seems a good choice. 
 
- <h2> Parameters explained </h2>
+### Parameters explained 
 We take five parameters of which one optional. For example:
 `HeurFuzz example/test_query.txt .example/test_refs.txt 75 output.txt 1.5`
 Those are, in order:
